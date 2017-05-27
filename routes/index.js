@@ -65,8 +65,6 @@ router.post('/formidableUpload', function (req, res, next) {
   })
 
   form.parse(req, function (err, fields, files) {
-    /* console.log('fields1:'+JSON.stringify(fields))
-     console.log('files1:'+JSON.stringify(files))*/
     var dataInfo = files.dataInfo;
     var uploadedPath = dataInfo.path;
     var dstPath = 'data/files/' + fields[ 'index' ];
@@ -139,28 +137,9 @@ router.post('/searchCity', function (req, res, next) {
   }, function (err, result) {
     writeExcelFle(res, result)
   })
-
 })
 
 // 高德API  POI查询
-function searchCity (city, cb) {
-  return new Promise(function (resolve, reject) {
-    request.post('http://restapi.amap.com/v3/geocode/geo', {
-      'form': {
-        'address': city[ 0 ],
-        'key': 'ad81930d052fa7b2b45c780ec71326de',
-        'city': citySearch
-      }
-    }, function (error, response, body) {
-      if (!error && response.statusCode === 200) {
-        var dt = JSON.parse(body);
-        resolve(dt, cb)
-      } else {
-        reject(null, cb)
-      }
-    })
-  })
-}
 function searchCityCurrent (city, cb) {
   request.post('http://restapi.amap.com/v3/geocode/geo', {
     'form': {
