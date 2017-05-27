@@ -11,39 +11,6 @@ router.get('/', function (req, res, next) {
   res.render('index', { title: 'Express' });
 });
 
-var mysql = require('mysql');
-var connection = mysql.createPool({
-  connectionLimit: 10,
-  host: '101.199.126.121',
-  user: 'root',
-  password: 'wrk#%%^lsf',
-  database: 'train',
-  port: '3306',
-  charset: 'utf8',
-  multipleStatements: true
-});
-router.get('/getCity', function (req, res, next) {
-  connection.query('select * from station', function (err, rows) {
-    if (err) {
-      console.log(err);
-      return false
-    } else {
-      res.json(rows)
-    }
-  });
-
-})
-
-router.post('/setProvince', function (req, res, next) {
-  var str = req.body.updateStr
-  console.log('sql------' + str)
-  connection.query({
-    sql: str
-  }, function (err, result) {
-    console.log(result);
-  });
-  res.send('ok')
-})
 
 // multiparty三方包, 分片上传时，分片接收数据，生成分片数据文件，及自动合并分片文件
 var multiparty = require('multiparty');
