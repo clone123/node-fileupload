@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>批量查询</title>
+</head>
+<body>
+<input type="button" id="start" value="批量查询开始">
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+<script type="text/javascript">
+    $(function () {
+        $('#start').click(function () {
+            console.log('查询开始。。。。。')
+            console.time('查询用时')
+            $.ajax({
+                url: '/searchCity',
+                type: 'get',
+                data: [],
+                success: function (result) {
+                    console.log('查询结束。。。。。' + result)
+                    console.timeEnd('查询用时')
+                }, error: function (err) {
+                    console.log(err)
+                    console.timeEnd('查询用时')
+                }
+            })
+        })
+    })
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>批量更新数据库内容</title>
+    <style>
+        .content{
+            width:950px;
+            margin: 0 auto;
+            margin-top: 50px;
+        }
+        #fileUpload{
+            display: inline-block;
+            width: 300px;
+        }
+        .progress{
+            width: 345px;
+            margin-top: 10px;
+        }
+        .bar{
+            height: 18px;
+            background: green;
+            color: #f5f5f5;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="content">
+    <input type="button" id="search" value="更新">
+</div>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+
+<script>
+    var page = {
+        filterCityArr:[],
+        num:0,
+        count:0,
+        init: function(){
+              var _this = this
+              $("#search").click(function () {
+                      _this.getCity()
+                   //_this.updateTable()
+              })
+              return _this ;
+        },
+
+        getCity :function () {
+            var _this = this ;
+            $.ajax({
+                url: "/getCity",
+                type: "get",
+                data: [],
+                success: function(result){
+                      _this.num = result.length
+                      console.log(_this.num)
+                      if(_this.num){
+                           result.forEach(function (row,i) {
+                              // _this.searchCity(row,i)
+                               _this.setProvince(row,i)
+                           })
+                      }
+                },error:function (e) {
+                    console.log(e)
+                }
+            });
+        },
+        
+        searchCity:function (cityObj,index) {
+            var _this = this
+            if(!cityObj.name || !cityObj.city) {
+                  _this.count += 1 ;
+                  if( _this.count == _this.num){
+                    console.log(JSON.stringify(_this.filterCityArr))
+                  }
+                  return false
+            }
+            var  name = cityObj.name ,city = cityObj.city;
+         //   console.log('查询-----'+name+'-------'+city)
+              $.ajax({
+                  url:'http://restapi.amap.com/v3/geocode/geo?address='+name+'站&key=1619f27756a089462bbe216cff73dee6',
+                  type:'get',
+                  async:true,
+                  success:function (result) {
+                       console.log('search-------'+index)
+                      _this.count += 1 ;
+                       if(!result.geocodes.length){
+                           _this.filterCityArr.push(cityObj)
+                       }else{
+                           var data = result.geocodes[0]
+                           if(data.city != city){
+                               _this.filterCityArr.push(cityObj)
+                           }
+                       }
+                      if( _this.count == _this.num){
+                          console.log(JSON.stringify(_this.filterCityArr))
+                      }
+                  }
+              })
+        },
+
+        setProvince:function (cityObj,index) {
+            var _this = this
+            if(!cityObj.name || !cityObj.city) {
+                return false
+            }
+            var city = cityObj.city,id = cityObj.id;
+            //   console.log('查询-----'+name+'-------'+city)
+            $.ajax({
+                url:'http://restapi.amap.com/v3/geocode/geo?address='+city+'&key=1619f27756a089462bbe216cff73dee6',
+                type:'get',
+                success:function (result) {
+                    console.log('search-------'+index)
+                    if(result.geocodes.length){
+                        var data = result.geocodes[0],pro = data.province ;
+                        if(data.province){
+                            var  updateStr = 'update station_copy set province="'+pro+'" where id='+id
+                            _this.updateTable(updateStr)
+                        }
+                    }
+                }
+            })
+        },
+
+        updateTable:function (str) {
+           // var  updateStr = 'update station_copy set province="广东省" where id=2'
+             $.ajax({
+                 url:'/setProvince',
+                 type:'post',
+                 data:{updateStr:str},
+                 success:function (result) {
+                     console.log(result)
+                 },error:function (err) {
+                      console.log(err)
+                 }
+             })
+        }
+
+    };
+    $(function(){
+        window['page'] = page.init();
+    });
+</script>
+
+</body>
+</html>

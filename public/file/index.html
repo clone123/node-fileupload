@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>文件分片上传/经纬度查询</title>
+    <style>
+        .content {
+            position: absolute;
+            left: 50%;
+            width: 450px;
+            transform: translate(-50%);
+        }
+
+        .center {
+            margin: 0 auto;
+        }
+
+        #fileUpload {
+            display: inline-block;
+            width: 300px;
+        }
+
+        .progress {
+            padding-right: 50px;
+            margin-top: 10px;
+        }
+
+        .bar {
+            height: 18px;
+            background: #4cc14c;
+            color: #f5f5f5;
+            text-align: center;
+            border-radius: 5px;
+        }
+
+        .lag-lng, .download {
+            display: none;
+        }
+
+        .download {
+            margin-bottom: 50px;
+        }
+
+
+    </style>
+</head>
+<body>
+<div class="content">
+    <p style="color: red;font-weight:bold">仅支持非中文名的Excel文件，格式如下图:</p>
+    <div>
+        <img src="../images/example3.png"/>
+    </div>
+    <p style="color: red">第一步=================上传文件=====================</p>
+    <div class="center">
+        <input type="file" id="fileUpload">
+        <input type="button" id="upload" value="上传"/>
+        <div class="progress">
+            <div id="progress" class="bar" style="width: 0%"></div>
+        </div>
+        <div id="uploadInfo"></div>
+        <div class="lag-lng">
+            <label>输入查询城市:</label>
+            <input type="text" id="city" autocomplete="on" value="">
+            <input type="button" id="search" style="margin-left: 25px" value="点击查询经纬度"/>
+        </div>
+        <div id="searchInfo"></div>
+        <div class="download">
+            <a href="/download">
+                <input type="button" id="download" value="点击下载"/>
+            </a>
+        </div>
+    </div>
+</div>
+<script src="//cdn.rawgit.com/satazor/SparkMD5/master/spark-md5.min.js"></script>
+<script src="https://code.jquery.com/jquery-2.2.4.min.js"
+        integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+
+
+<script>
+    var page = {
+        timeStart: null,
+        fileUpload: null,
+        init: function () {
+            var _this = this;
+            $('div.content').delegate('#fileUpload', 'change', function (event) {
+                _this.fileChange(event)
+            })
+            $('div.content').delegate('#upload', 'click', function () {
+                _this.upload()
+            })
+            $('div.content').delegate('#search', 'click', function () {
+                _this.searchLatLng()
+            })
+        },
+        fileChange: function (e) {
+            var files = e.target.files || e.dataTransfer.files
+            var file = files[ 0 ]
+            if (files.length && file.name.match(/(xlsx|xls)/g)) {
+                this.fileUpload = file
+                $("#uploadInfo,#searchInfo").empty().hide()
+                $('.progress,.lag-lng,.download').hide()
+                $('#progress').css('width', '0%').text('0%')
+            }
+        },
+
+        upload: function () {
+            var _this = this,
+              file = _this.fileUpload, // $("#fileUpload")[ 0 ].files[ 0 ],
+              name = file.name,        //文件名
+              size = file.size;        //总大小
+
+            _this.succeed = 0;
+
+            var shardSize = 5 * 1024 * 1024;     //以5MB为一个分片
+            _this.shardCount = Math.ceil(size / shardSize);   //总片数
+            $('#uploadInfo').show()
+            //  $('#uploadInfo').show().append('<p>总片数：' + _this.shardCount + '</p>')
+            $('.progress').show()
+            this.timeStart = new Date().getTime()
+            for (var i = 0; i < _this.shardCount; ++i) {
+
+                var start = i * shardSize,
+                  end = Math.min(size, start + shardSize),
+                  sliceFile = file.slice(start, end);
+
+                var form = new FormData();
+                form.append('dataInfo', sliceFile);
+                form.append("name", name);
+                form.append("total", _this.shardCount);
+                form.append("index", i + 1);
+
+                /*  var spark = new SparkMD5();
+                 var fileReader = new FileReader();
+                 fileReader.readAsBinaryString(sliceFile);
+                 fileReader.onload = function (e) {
+                 spark.appendBinary(e.target.result);
+                 $('#uploadInfo').append('<p>Hash：' + spark.end() + '</p>')
+                 }*/
+                _this.sendFormData(form)
+            }
+
+            _this.mergeFilesTimer = setInterval(function () {
+                if (_this.succeed == _this.shardCount) {
+                    // $('#uploadInfo').append('<p>开始合并文件....</p>')
+                    _this.mergeFiles({
+                        'name': name,
+                        'total': _this.shardCount
+                    });
+                    clearTimeout(_this.mergeFilesTimer)
+                }
+            }, 1000)
+        },
+
+        sendFormData: function (form) {
+            var _this = this;
+            $.ajax({
+                url: "/formidableUpload",
+                type: "POST",
+                data: form,
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function () {
+                    var num = ++_this.succeed,
+                      progress = parseInt(num / _this.shardCount * 100, 10)
+
+                    $('#progress').css('width', progress + '%').text(progress + '%')
+                    if (progress == 100) {
+                        $('#uploadInfo').append('<p>上传用时 Time：' + (new Date().getTime() - _this.timeStart) + 'ms</p>')
+                    }
+                }, error: function (e) {
+                    console.log(e)
+                }
+            });
+        },
+        mergeFiles: function (dt) {
+            $.ajax({
+                url: '/mergeFiles',
+                type: 'post',
+                data: dt,
+                success: function (result) {
+                    console.log(result)
+                    $('#uploadInfo').append('<p>文件合并成功....</p>')
+                    setTimeout(function () {
+                        $('#uploadInfo').append('<p style="color: red">第二步=================输入城市=====================</p>')
+                        $('.lag-lng').show()
+                    }, 1500)
+                }, error: function (err) {
+                    console.log(err)
+                }
+            })
+        },
+        searchLatLng: function () {
+            var timeStart = new Date().getTime()
+            $('#searchInfo').show().append('<p>查询开始。。。。</p>')
+            $.ajax({
+                url: '/searchCity',
+                type: 'post',
+                data: { city: $("#city").val() },
+                success: function (result) {
+                    $('#searchInfo').append('<p>查询用时 Time：' + (new Date().getTime() - timeStart) + 'ms</p>')
+                    setTimeout(function () {
+                        $('#searchInfo').append('<p style="color: red">第三步=================文件下载=====================</p>')
+                        $('.download').show()
+                    }, 1000)
+                }, error: function (err) {
+                    console.log(err)
+                }
+            })
+        },
+        sendData: function (form) {
+            var _this = this;
+            $.ajax({
+                url: "/fileReader",
+                type: "POST",
+                data: form,
+                async: true,         //异步
+                success: function (result) {
+                    var num = ++_this.succeed,
+                      progress = parseInt(num / _this.shardCount * 100, 10)
+                    $('#progress').css('width', progress + '%').text(progress + '%')
+                }, error: function (e) {
+                    console.log(e)
+                }
+            });
+        }
+    };
+    $(function () {
+        page.init();
+    });
+</script>
+
+</body>
+</html>
