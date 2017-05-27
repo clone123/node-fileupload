@@ -176,6 +176,24 @@ router.post('/searchCity', function (req, res, next) {
 })
 
 // 高德API  POI查询
+function searchCity (city, cb) {
+  return new Promise(function (resolve, reject) {
+    request.post('http://restapi.amap.com/v3/geocode/geo', {
+      'form': {
+        'address': city[ 0 ],
+        'key': 'ad81930d052fa7b2b45c780ec71326de',
+        'city': citySearch
+      }
+    }, function (error, response, body) {
+      if (!error && response.statusCode === 200) {
+        var dt = JSON.parse(body);
+        resolve(dt, cb)
+      } else {
+        reject(null, cb)
+      }
+    })
+  })
+}
 function searchCityCurrent (city, cb) {
   request.post('http://restapi.amap.com/v3/geocode/geo', {
     'form': {
@@ -202,12 +220,14 @@ function searchCityCurrent (city, cb) {
 function writeExcelFle (res, dt) {
   var buffer = xlsx.build([ {
     name: 'Sheet1',
-    data: dt
+    data: dt.sort(function (a, b) {
+      return a[ 0 ] - b[ 0 ]
+    })
   } ])
   var pathName = pathObj.uploadPath.split('.')
   pathObj.uploadPathNew = pathName[ 0 ] + '_new.' + pathName[ 1 ]
   fs.writeFileSync(pathObj.uploadPathNew, buffer, { 'flag': 'w' });
-  res.send('search over !!!')
+  res.send('search over !')
   res.end()
 }
 
