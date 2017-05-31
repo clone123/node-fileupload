@@ -12,7 +12,7 @@ router.get('/', function (req, res, next) {
 });
 
 
-// multiparty三方包, 分片上传时，分片接收数据，生成分片数据文件，及自动合并分片文件
+// multiparty三方包, 分片上传时，分片接收数据，生成分片数据文件，及合并分片文件
 var multiparty = require('multiparty');
 router.post('/multipartyFileUpload', function (req, res, next) {
   // console.log(req.body , req.query,req.files)
